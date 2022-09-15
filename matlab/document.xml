@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="code"/></w:pPr><w:r><w:t><![CDATA[classdef Assignment_app < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                  matlab.ui.Figure
+        ExportButton              matlab.ui.control.Button
+        CalculateHRButton         matlab.ui.control.Button
+        HRmLabel                  matlab.ui.control.Label
+        HR                        matlab.ui.control.EditField
+        ShowanymalfunctionButton  matlab.ui.control.Button
+        Label                     matlab.ui.control.Label
+        TextArea                  matlab.ui.control.TextArea
+    end
+
+    
+    properties (Access = private)
+        Sig
+        HB
+        Beats % Description
+    end
+    
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: ExportButton
+        function ExportButtonPushed(app, event)
+     [filename, pathname] = uigetfile({'*.mat'},'Select File');
+     fullpath = strcat(pathname, filename);
+     if isequal(filename, 0) || isequal(pathname, 0)   
+        disp('File input canceled.');   
+     else
+        fid=fopen(filename,'r');
+     end
+     time=10;
+     f=fread(fid,2*360*time,'ubit12');
+     Orig_Sig=f(1:2:length(f));
+     app.Sig = Orig_Sig;
+     plot(Orig_Sig)
+        end
+
+        % Button pushed function: CalculateHRButton
+        function CalculateHRButtonPushed(app, event)
+            beat_count = 0;
+            len=length(app.Sig)-1;
+            r=0;
+            rr=0;
+for k = 2 : len
+    i=0;
+    if(app.Sig(k) > app.Sig(k-1) && app.Sig(k) > app.Sig(k+1) && app.Sig(k) > 1)
+        %k
+        %disp('Prominant peak found');
+        beat_count = beat_count + 1;
+        if i==0
+            r=k;
+            i=i+1;
+        else
+            rr=k;
+        end
+        if beat_count ==2
+            break;
+        end
+    end
+end
+
+fs = 10;
+beats=60*fs/(rr-r);
+%app.Beats=beats;
+%N = length(app.Sig);
+%duration_in_seconds = N/fs;
+%duration_in_minutes = duration_in_seconds/60;
+%BPM_avg = beat_count/duration_in_minutes;
+%app.HB=BPM_avg;
+beats_abs=abs(beats);
+app.Beats=beats_abs;
+app.HR.Value = num2str(beats_abs);
+        end
+
+        % Button pushed function: ShowanymalfunctionButton
+        function ShowanymalfunctionButtonPushed(app, event)
+            if (app.Beats > 100)
+                app.TextArea.Value = "Tachycardia — Fast heart rate.";
+            elseif (app.Beats < 60)
+                app.TextArea.Value = "Bradycardia — Slow heart rate."; 
+            else
+                app.TextArea.Value = "Heart Rate is Normal.";
+            end
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Position = [100 100 366 273];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create ExportButton
+            app.ExportButton = uibutton(app.UIFigure, 'push');
+            app.ExportButton.ButtonPushedFcn = createCallbackFcn(app, @ExportButtonPushed, true);
+            app.ExportButton.Position = [132 229 100 22];
+            app.ExportButton.Text = 'Export';
+
+            % Create CalculateHRButton
+            app.CalculateHRButton = uibutton(app.UIFigure, 'push');
+            app.CalculateHRButton.ButtonPushedFcn = createCallbackFcn(app, @CalculateHRButtonPushed, true);
+            app.CalculateHRButton.Position = [231 160 100 22];
+            app.CalculateHRButton.Text = 'Calculate HR';
+
+            % Create HRmLabel
+            app.HRmLabel = uilabel(app.UIFigure);
+            app.HRmLabel.HorizontalAlignment = 'right';
+            app.HRmLabel.FontWeight = 'bold';
+            app.HRmLabel.Position = [22 160 37 22];
+            app.HRmLabel.Text = 'HR/m';
+
+            % Create HR
+            app.HR = uieditfield(app.UIFigure, 'text');
+            app.HR.Tag = 'HR';
+            app.HR.Editable = 'off';
+            app.HR.FontWeight = 'bold';
+            app.HR.Position = [74 156 100 25.8000011444092];
+
+            % Create ShowanymalfunctionButton
+            app.ShowanymalfunctionButton = uibutton(app.UIFigure, 'push');
+            app.ShowanymalfunctionButton.ButtonPushedFcn = createCallbackFcn(app, @ShowanymalfunctionButtonPushed, true);
+            app.ShowanymalfunctionButton.Position = [22 107 133 22];
+            app.ShowanymalfunctionButton.Text = {'Show any malfunction'; ''};
+
+            % Create Label
+            app.Label = uilabel(app.UIFigure);
+            app.Label.HorizontalAlignment = 'right';
+            app.Label.Position = [-19 66 25 22];
+            app.Label.Text = '';
+
+            % Create TextArea
+            app.TextArea = uitextarea(app.UIFigure);
+            app.TextArea.Editable = 'off';
+            app.TextArea.Position = [21 52 246 38];
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = Assignment_app
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end]]></w:t></w:r></w:p></w:body></w:document>
